@@ -1,0 +1,76 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2023 David Chisnall <theraven@FreeBSD.org>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.Dd August 17, 2023
+.Dt QEMUFWCFG 5
+.Os
+.Sh NAME
+.Nm qemufqcfg
+.Nd "QEMU Firmware Config client interface"
+.Sh SYNOPSIS
+.Pp
+To load as a loadable kernel module:
+.Pp
+.Dl "kldload fusefs"
+.Sh DESCRIPTION
+The
+.Nm
+driver implements the client driver for QEMU's firmware configuration interface.
+.Pp
+This interface allows QEMU, or a compatible emulator or hypervisor such as
+.Xr bhyve 8 ,
+to provide configuration files via a simple interface.
+The core interface is a simple (read-only) key-value store that uses 16-bit integers as keys and bytes streams as values.
+.Pp
+This driver is intended to be used in conjunction with a single userspace client, such as the 
+.Xr mount_qemufwcfg 8
+FUSE filesystem from NetBSD.
+.Pp
+The driver supports a single command via the 
+.Xr ioctl 2
+system call:
+.Dv FWCFGIO_SET_INDEX .
+This takes a 16-bit integer as the argument and selects the specified entry in the host.
+Subsequent
+.Xr read 2
+calls will read the byte stream associated with that selector.
+.Sh SEE ALSO
+.Rs
+.%T QEMU Firmware Configuration (fw_cfg) Device specification
+.%U https://www.qemu.org/docs/master/specs/fw_cfg.html
+.Sh HISTORY
+The
+.Nm qemufqcfg
+driver first appeared in NetBSD 9.0.
+The
+.Fx
+implementation, which used the NetBSD version as a reference, first appeared in 
+.Fx 14.0
+.
+.Sh AUTHORS
+The
+.Nm qemufqcfg
+driver was originally written by
+.An David Chisnall .

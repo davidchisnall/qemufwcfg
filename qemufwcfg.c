@@ -1,6 +1,7 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 2023 David Chisnall <theraven@FreeBSD.org>
- * All rights reserved.
  *
  * This file was created using the NetBSD implementation as reference and so
  * may be a derived work of the NetBSD implementation:
@@ -63,12 +64,12 @@ static int qemufwcfg_attach(device_t);
 static int qemufwcfg_detach(device_t);
 static int qemufwcfg_open(struct cdev *dev, int oflags, int devtype,
     struct thread *td);
-static int qemufwcfg_close(struct cdev *dev __unused, int flags __unused,
-    int fmt __unused, struct thread *td __unused);
-static int qemufwcfg_ioctl(struct cdev *dev __unused, u_long cmd, caddr_t data,
-    int fflag __unused, struct thread *td __unused);
+static int qemufwcfg_close(struct cdev *dev, int flags,
+    int fmt, struct thread *td);
+static int qemufwcfg_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
+    int fflag, struct thread *td);
 static int qemufwcfg_read(struct cdev *dev, struct uio *uio,
-    int ioflag __unused);
+    int ioflag);
 
 /**
  * Device attachment methods.
@@ -170,7 +171,6 @@ offset_for_data(struct qemufwcfg_softc *sc)
 	    (sc->io_type == SYS_RES_IOPORT) ? DataPortOffset : DataMMIOOffset);
 }
 
-
 /**
  * Probe hook.  Checks that the ACPI node exists.
  */
@@ -219,7 +219,8 @@ qemufwcfg_attach(device_t dev)
 	sc->tag = rman_get_bustag(sc->res);
 	sc->handle = rman_get_bushandle(sc->res);
 
-	// The selector reserved for checking that this is the correct interface.
+	// The selector reserved for checking that this is the correct
+	// interface.
 	const int SignatureSelector = 0;
 	write_selector(sc, SignatureSelector);
 
@@ -230,11 +231,15 @@ qemufwcfg_attach(device_t dev)
 
 	// Check that the signature value is correct.
 	static const char expected[] = "QEMU";
-	_Static_assert(sizeof(expected) >= sizeof(buf), "Expected value too small!");
+	_Static_assert(sizeof(expected) >= sizeof(buf),
+	    "Expected value too small!");
 	if (strncmp(buf, expected, sizeof(buf)) != 0) {
-		bus_release_resource(dev, sc->io_type, sc->resource_id, sc->res);
+		bus_release_resource(dev, sc->io_type, sc->resource_id,
+		    sc->res);
 		sc->res = NULL;
-		device_printf(dev, "Failed to attach, got <%c%c%c%c>, expected <QEMU>", buf[0], buf[1], buf[2], buf[3]);
+		device_printf(dev,
+		    "Failed to attach, got <%c%c%c%c>, expected <QEMU>", buf[0],
+		    buf[1], buf[2], buf[3]);
 		return (ENXIO);
 	}
 
@@ -260,9 +265,9 @@ static int
 qemufwcfg_detach(device_t dev)
 {
 	struct qemufwcfg_softc *sc = device_get_softc(dev);
+	destroy_dev(sc->cdev);
 	bus_release_resource(dev, sc->io_type, sc->resource_id, sc->res);
 	mtx_destroy(&sc->mutex);
-	destroy_dev(sc->cdev);
 	return 0;
 }
 
@@ -293,7 +298,7 @@ qemufwcfg_open(struct cdev *dev, int oflags __unused, int devtype __unused,
  * userspace process to open it, it doesn't do any cleanup.
  */
 static int
-qemufwcfg_close(struct cdev *dev __unused, int flags __unused, int fmt __unused,
+qemufwcfg_close(struct cdev *dev, int flags __unused, int fmt __unused,
     struct thread *td __unused)
 {
 	struct qemufwcfg_softc *sc = dev->si_drv1;
@@ -314,14 +319,10 @@ qemufwcfg_close(struct cdev *dev __unused, int flags __unused, int fmt __unused,
  * Ioctl handler.  A single ioctl is supported, to set the selector.
  */
 static int
-qemufwcfg_ioctl(struct cdev *dev __unused, u_long cmd, caddr_t data,
+qemufwcfg_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
     int fflag __unused, struct thread *td __unused)
 {
 	struct qemufwcfg_softc *sc = dev->si_drv1;
-
-	if (sc == NULL) {
-		return (ENXIO);
-	}
 
 	switch (cmd) {
 	default:
@@ -340,10 +341,10 @@ qemufwcfg_ioctl(struct cdev *dev __unused, u_long cmd, caddr_t data,
  * the only way of reading backwards is to reset to the beginning of a 'file'
  * and read forwards.
  *
- * DMA is not currently used.  The for small files, the cost of pinning a
- * buffer and passing a physical address out to the host would likely offset
- * any speedup.  We can read 8 bytes at a time and most files that we read are
- * a handful of MMIO reads at this size.
+ * DMA is not currently used.  For small files, the cost of pinning a buffer
+ * and passing a physical address out to the host would likely offset any
+ * speedup.  We can read 8 bytes at a time and most files that we read are a
+ * handful of MMIO reads at this size.
  */
 static int
 qemufwcfg_read(struct cdev *dev, struct uio *uio, int ioflag __unused)
@@ -373,6 +374,10 @@ qemufwcfg_read(struct cdev *dev, struct uio *uio, int ioflag __unused)
 	}
 
 	while ((uio->uio_resid > 0) && (error == 0)) {
+		// Try copying 64 bytes at a time.  If we're on a platform that
+		// supports MMIO then we should be copying at most 7 bytes here because
+		// we'll have read the rest via 8-byte reads.  If we're using x86 IO
+		// Ports then we have to read one byte at at time.
 		uint8_t buf[64];
 		size_t count = min(sizeof(buf), uio->uio_resid);
 		bus_space_read_multi_1(sc->tag, sc->handle, offset, buf, count);
