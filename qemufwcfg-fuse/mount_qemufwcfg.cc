@@ -421,7 +421,6 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 			return EINVAL;
 		}
 		auto file = std::get<File>(item);
-		// FIXME: Cache this
 		Buffer out;
 		out.resize(readIn.size);
 		int ret = ioctl(qemuFWCfgFD, FWCFGIO_SET_INDEX, &file.selector);
@@ -512,7 +511,6 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 		}
 		debug_message("Dirents size: {}, number of entries: {}",
 		    dirents.size(), directory.children.size());
-		// FIXME:
 		if (readIn.offset >= dirents.size()) {
 			debug_message("Writing no dirent for >0 offset {}",
 			    readIn.offset);

@@ -15,8 +15,7 @@
 #include <utility>
 #include <vector>
 
-// FIXME:
-#include "/usr/src/sys/fs/fuse/fuse_kernel.h"
+#include <fuse_kernel.h>
 
 /**
  * Concept to differentiate between values that are provided as variable-sized
@@ -611,8 +610,6 @@ template <typename T, bool Debug = false> class FuseFS {
 			case FUSE_READ:
 				dispatch(&T::fuse_read, header, body);
 				break;
-				// FIXME: Forget doesn't get a reply.  Figure
-				// out how to handle it.
 			case FUSE_FORGET:
 				dispatch(&T::fuse_forget, header, body);
 				break;
