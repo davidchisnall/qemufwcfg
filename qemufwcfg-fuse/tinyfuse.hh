@@ -1,7 +1,6 @@
 #pragma once
 #include <sys/uio.h>
 
-#include <__format/format_functions.h>
 #include <stdlib.h>
 #include <unistd.h>
 
