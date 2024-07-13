@@ -46,7 +46,7 @@ The core interface is a simple (read-only) key-value store that uses 16-bit inte
 .Pp
 This driver is intended to be used in conjunction with a single userspace client, such as the 
 .Xr mount_qemufwcfg 8
-FUSE filesystem from NetBSD.
+FUSE filesystem.
 .Pp
 The driver supports a single command via the 
 .Xr ioctl 2
@@ -58,6 +58,7 @@ Subsequent
 calls will read the byte stream associated with that selector.
 .Sh SEE ALSO
 .Rs
+.Xr mount_qemufwcfg 8 ,
 .%T QEMU Firmware Configuration (fw_cfg) Device specification
 .%U https://www.qemu.org/docs/master/specs/fw_cfg.html
 .Sh HISTORY
