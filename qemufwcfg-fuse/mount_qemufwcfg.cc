@@ -361,7 +361,7 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 			debug_message(
 			    "Trying to open directory with non-directory inode {}",
 			    header.nodeid);
-			return ENOENT;
+			return ENOTDIR;
 		}
 		auto it = inodes.find(header.nodeid);
 		if (it == inodes.end()) {
@@ -387,7 +387,7 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 			debug_message(
 			    "Trying to open file with directory inode: {}",
 			    header.nodeid);
-			return ENOENT;
+			return EISDIR;
 		}
 		auto it = inodes.find(header.nodeid);
 		if (it == inodes.end()) {
