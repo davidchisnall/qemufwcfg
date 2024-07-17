@@ -1,6 +1,7 @@
 #pragma once
 #include <sys/uio.h>
 
+#include <fuse_kernel.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -13,8 +14,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-
-#include <fuse_kernel.h>
 
 /**
  * Concept to differentiate between values that are provided as variable-sized
@@ -563,12 +562,28 @@ template <typename T, bool Debug = false> class FuseFS {
 		return NoResult {};
 	}
 
+	ErrorOr<fuse_statfs_out> fuse_statfs(const fuse_in_header &)
+	{
+		fuse_statfs_out out;
+		memset(&out, 0, sizeof(out));
+		out.st.blocks = 1;
+		out.st.bfree = 0;
+		out.st.bavail = 0;
+		out.st.files = 0;
+		out.st.ffree = 0;
+		// Default block size
+		out.st.bsize = 512;
+		out.st.namelen = PATH_MAX;
+		out.st.frsize = 0;
+		return out;
+	}
+
 	/*
 	 * Enter a run loop, waiting for kernel messages and posting responses.
 	 *
 	 * When a FUSE message is received from the kernel, this calls the
-	 * corresponding handler in the subclass (or this class if none is provided
-	 * in the subclass).
+	 * corresponding handler in the subclass (or this class if none is
+	 * provided in the subclass).
 	 */
 	void run()
 	{
@@ -626,6 +641,9 @@ template <typename T, bool Debug = false> class FuseFS {
 				break;
 			case FUSE_SETATTR:
 				dispatch(&T::fuse_setattr, header, body);
+				break;
+			case FUSE_STATFS:
+				dispatch(&T::fuse_statfs, header, body);
 				break;
 			case FUSE_DESTROY:
 				// When we receive a destroy message, this

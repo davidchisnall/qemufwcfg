@@ -220,6 +220,16 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 	uint64_t nextFH = 1;
 
 	/**
+	 * The total number of files in this filesystem.
+	 */
+	uint16_t numberOfFiles = 0;
+
+	/**
+	 * The total number of bytes in this filesystem.
+	 */
+	uint32_t totalSize = 0;
+
+	/**
 	 * Buffers that cache the contents of files.  We currently never
 	 * invalidate these because the interface is not used to deliver very
 	 * large files. The filesystem can be unmounted and remounted to clear
@@ -295,12 +305,14 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 		}
 		debug_message("Found {} firmware entries", count);
 		count = ntohl(count);
+		numberOfFiles = count;
 		// Read each entry and build the required directory structure.
 		for (uint32_t i = 0; i < count; i++) {
 			FWCfgFile file;
 			read(qemuFWCfgFD, &file, sizeof(file));
 			debug_message("File name: {}, size: {}, selector: {}",
 			    file.name, ntohl(file.size), ntohs(file.selector));
+			totalSize += ntohl(file.size);
 			std::string_view path { file.name };
 			size_t nextSlash;
 			auto dir = root;
@@ -594,6 +606,21 @@ class QemuFWCfgFuseFS : public FuseFS<QemuFWCfgFuseFS, Debug> {
 		attr.gid = defaultGid;
 		attr.rdev = 0;
 		attr.blksize = BlockSize;
+	}
+
+	/**
+	 * Statfs.  Return the number of files in the filesystem.
+	 */
+	ErrorOr<fuse_statfs_out> fuse_statfs(const fuse_in_header &header)
+	{
+		fuse_statfs_out out = std::get<fuse_statfs_out>(
+		    FuseFS::fuse_statfs(header));
+		out.st.files = numberOfFiles;
+		// Use the default block size
+		out.st.bsize = 512;
+		out.st.blocks = totalSize / 512;
+		out.st.namelen = sizeof(FWCfgFile::name);
+		return out;
 	}
 };
 
